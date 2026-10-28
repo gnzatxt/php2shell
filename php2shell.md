@@ -1,4 +1,4 @@
-** Corrupción de memoria en el motor de PHP (request lifecycle) permite ejecución remota de código no autenticada (RCE)**
+## Corrupción de memoria en el motor de PHP (request lifecycle) permite ejecución remota de código no autenticada (RCE) ##
 
 *(CVE-2026-109618 y CVE-2026-109619, conocidas colectivamente como PHP2Shell)*
 
