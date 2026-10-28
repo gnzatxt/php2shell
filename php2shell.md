@@ -1,47 +1,147 @@
-## Corrupción de memoria en el motor de PHP (request lifecycle) permite ejecución remota de código no autenticada (RCE) ##
+# Use Memory Corruption en el motor de PHP (request lifecycle) permite RCE no autenticada (PHP2Shell)
 
-*(CVE-2026-109618 y CVE-2026-109619, conocidas colectivamente como PHP2Shell)*
+> **CVE-2026-109618 / CVE-2026-109619**  
+> Critical unauthenticated Remote Code Execution in PHP core
 
-## Resumen
-Dos vulnerabilidades críticas en el runtime de PHP permiten a un atacante remoto no autenticado ejecutar código arbitrario con los privilegios del proceso PHP (mod_php, PHP-FPM, php-cgi, etc.). Afectan a todas las instalaciones que sirven peticiones web (desde PHP 5.4 en adelante; solo las ramas 8.2–8.5 recibieron parches oficiales). Se explotan antes de que se ejecute el código de la aplicación, por lo que frameworks como WordPress, Drupal, Laravel, Joomla o Magento no ofrecen protección. Fueron parcheadas el 21 de octubre de 2026 y añadidas al catálogo KEV de CISA el 26 de octubre por evidencia de explotación en la naturaleza.
+---
 
-## Detalles técnicos
-- **CWE**: CWE-416 (Use After Free). También relacionadas: CWE-755 (Improper Handling of Exceptional Conditions), CWE-824 (Access of Uninitialized Pointer) y otras asociadas a corrupción de estado interno.
-- **Endpoint/Componente afectado**: Ciclo de vida de la petición en el motor de PHP (parsing de variables de request, manejo de out-of-memory y estado global/request-owned). Especialmente crítico en Apache con mod_php (explotación demostrada con una sola petición HTTP antes de que se ejecute código de aplicación). También afecta PHP-FPM, php-cgi, FrankenPHP y LiteSpeed.
-- **Autenticación requerida**: Ninguna (no autenticada).
-- **Entorno de pruebas**: PHP 8.x (versiones anteriores a 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35) sirviendo peticiones web, preferiblemente con mod_php y límites de memoria por defecto o reducidos. Afecta también a versiones EOL (5.4–8.1) sin parche oficial.
+## 1. Resumen Ejecutivo
 
-## Pasos de reproducción
-1. Identificar un servidor vulnerable que ejecute PHP no parcheado (comprobar versión con `phpinfo()` o cabeceras).
-2. Enviar peticiones HTTP especialmente elaboradas (multipart o de gran tamaño) diseñadas para forzar un escenario de out-of-memory (OOM) mientras se inicializan estructuras internas de la request (CVE-2026-109618) o para dejar estado interno “stale” (use-after-free) que sobreviva a la liberación de memoria y sea reutilizado por una petición posterior del mismo worker (CVE-2026-109619, a menudo relacionada con `session.upload_progress` u otros paths de error fatal).
-3. Observar ejecución de código con privilegios del worker PHP (por ejemplo, escritura de webshell o comandos del sistema). En entornos de laboratorio se ha confirmado RCE sobre mod_php con límites de memoria por defecto.
+Dos vulnerabilidades críticas de seguridad de memoria (Use-After-Free y corrupción de estado interno) en el núcleo del motor PHP afectan al ciclo de vida de las peticiones HTTP.
 
-*(Nota: los detalles exactos de los payloads públicos varían según versión, SAPI y layout de memoria; no existe un único exploit universal 100 % fiable en todos los entornos.)*
+- Afectan a **todas** las instalaciones de PHP que sirven requests web (mod_php, PHP-FPM, php-cgi, FrankenPHP, LiteSpeed…).
+- Permiten RCE no autenticada con privilegios del proceso PHP worker.
+- En muchos escenarios (especialmente mod_php) se puede explotar **antes** de que se ejecute código de la aplicación.
+- Parcheadas el **21 de octubre de 2026**.
+- Explotación activa confirmada e incluidas en **CISA KEV** el 26 de octubre de 2026.
 
-## Impacto
-Un atacante puede obtener una shell remota en el servidor web sin necesidad de credenciales. Esto permite:
-- Comprometer completamente el sitio (robo de datos, defacement, instalación de malware/ransomware).
-- Movimiento lateral hacia otros servicios o bases de datos.
-- Exfiltración de secretos (tokens, claves, hashes de contraseñas) que puedan residir en memoria de otros workers.
-- Impacto masivo en la infraestructura web mundial (PHP potencia ~70 % de los sitios). Ya se han observado intentos de explotación previos a la divulgación pública y actividad posterior a escala.
+---
 
-## Severidad (CVSS)
-**CVSS v4.0: 9.2 (Critical)**  
-Vector aproximado (según evaluación de PHP/CNA): AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N (o equivalente).  
+## 2. Identificadores
 
-Justificación: explotable de forma remota, sin autenticación ni interacción del usuario, impacto total en confidencialidad, integridad y disponibilidad del proceso PHP, y con evidencia de explotación en la naturaleza (CISA KEV).
+| Campo                 | Valor |
+|-----------------------|-------|
+| **CVE**               | CVE-2026-109618, CVE-2026-109619 |
+| **GHSA**              | [GHSA-w8hw-w9fx-j79w](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w) · [GHSA-6wmf-4rv5-p3rp](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp) |
+| **CWE principal**     | CWE-416 (Use After Free) |
+| **CWE secundarios**   | CWE-755, CWE-824, CWE-1325, CWE-1419 |
+| **Nombre común**      | PHP2Shell / php2shell |
+| **Otras referencias** | NVD, CISA KEV, advisory oficial PHP |
 
-## Recomendación de solución
-**Causa raíz**: manejo incorrecto de condiciones excepcionales (OOM y errores fatales) que deja estructuras de request parcialmente inicializadas o estado interno apuntando a memoria liberada, permitiendo corrupción de memoria controlable por el atacante.
+---
 
-**Fix sugerido**:
-- Actualizar inmediatamente a las versiones parcheadas:
-  - PHP 8.5.12
-  - PHP 8.4.27
-  - PHP 8.3.36
-  - PHP 8.2.35
-- Reiniciar los workers/procesos PHP (Apache, PHP-FPM, etc.) después de la actualización.
-- Para versiones EOL (≤ 8.1): migrar a una rama soportada o aplicar backports del distribuidor (si existen).
-- Mitigaciones temporales incompletas (no sustituyen el parche): desactivar `session.upload_progress.enabled=0` y revisar límites de memoria, pero PHP afirma explícitamente que **no existen mitigaciones completas**.
+## 3. Detalles técnicos
 
-Priorizar sistemas expuestos a Internet y realizar investigación forense de posibles compromisos previos (intentos detectados desde al menos el 17 de octubre de 2026).
+| Campo                        | Valor |
+|-----------------------------|-------|
+| **CWE**                     | CWE-416 (principal) |
+| **Componente afectado**     | Núcleo de PHP (request lifecycle / memory management / error handling) |
+| **Versiones afectadas**     | < 8.2.35, < 8.3.36, < 8.4.27, < 8.5.12 (incluye 5.x–8.1) |
+| **Versiones corregidas**    | 8.5.12, 8.4.27, 8.3.36, 8.2.35 |
+| **Autenticación requerida** | No |
+| **Vector de ataque**        | Red (AV:N) |
+| **Complejidad de ataque**   | Alta (AC:H) |
+| **Interacción del usuario** | No requerida (UI:N) |
+| **Prerrequisitos**          | PHP sirviendo requests web. Mayor riesgo en `mod_php`. Mismo worker para el caso de stale state. |
+
+---
+
+## 4. Evidencia / PoC
+
+- [x] Capturas de pantalla / demos de investigadores
+- [x] Request / Response (curl, Burp…)
+- [x] Logs del servidor
+- [x] Vídeo de la explotación
+- [x] PoCs públicos y templates Nuclei
+
+Explotación confirmada en honeypots (incluyendo intento detectado por Amazon el **17 de octubre**, 4 días antes de la divulgación pública).
+
+---
+
+## 5. Impacto
+
+### Impacto técnico
+- RCE no autenticada con privilegios del proceso PHP
+- Posibilidad de pivot / movimiento lateral
+- Fuga de información sensible (memoria de otros requests)
+
+### Impacto de negocio
+- Compromiso de datos (WordPress, Drupal, Joomla, Magento, etc.)
+- Interrupción de servicio a gran escala
+- Daño reputacional (“Black October”)
+- Impacto normativo (GDPR, PCI-DSS…)
+
+---
+
+## 6. Severidad
+
+**CVSS v4.0**
+
+- **Vector**: `CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N`
+- **Puntuación**: **9.2 (Critical)**
+- **Justificación**: RCE no autenticada sobre red con impacto total en C/I/A del proceso PHP.
+
+**Otras métricas**
+- **EPSS**: Extremadamente alto (~100 %)
+- **CISA KEV**: Sí (añadidas el 26 de octubre de 2026)
+- **Rating interno**: Crítica
+
+---
+
+## 7. Recomendación de solución
+
+**Causa raíz**  
+Manejo incorrecto de `longjmp()` en errores OOM y falta de reseteo completo de estado global (error, session, etc.) que apunta a memoria de requests previos.
+
+**Fix definitivo**
+- Actualizar a **PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35**
+- Aplicar parches de distribución / LTS vendor
+- Para 7.4 / 8.0 / 8.1: usar backports de código fuente o migrar
+
+**Mitigaciones temporales** (reducen exposición pero **no** son completas):
+
+- `session.upload_progress.enabled=0` + reiniciar workers
+- `memory_limit=-1` (no overrideable) + límites bajos de `post_max_size`
+- En PHP 8.5: `fatal_error_backtraces=0`
+- Límites a nivel de web server / proxy
+- Aislar sistemas que no puedan parchearse (especialmente ≤ 8.1)
+
+**Prioridad de remediación**: **Crítica**
+
+---
+
+## 8. Detección e Indicadores de Compromiso (IoC)
+
+- Requests HTTP anómalos (multipart crafted, intentos de forzar OOM)
+- Logs de PHP / web server con errores fatales, OOM o crashes de workers
+- Comportamiento anómalo de procesos PHP (comandos, conexiones salientes, archivos nuevos)
+- Reglas Sigma publicadas por CISA
+- Inventario completo de versiones de PHP (incluyendo embebido)
+
+---
+
+## 9. Timeline de divulgación
+
+| Fecha       | Evento |
+|-------------|--------|
+| ≈ Ago 2026  | Descubrimiento (Calif / Wiz / OpenAI) |
+| Sep 2026    | Coordinación de fix con PHP |
+| 2026-10-17  | Intento de explotación en honeypot Amazon |
+| 2026-10-20  | Fuga de IDs CVE y notice anticipado de PHP |
+| 2026-10-21  | Publicación de parches y advisories GHSA |
+| 2026-10-23  | Advisory informativo adicional (CVE-2026-115560) |
+| 2026-10-26  | Inclusión en CISA KEV |
+| 2026-10-28  | Estado actual: explotación activa confirmada |
+
+---
+
+## 10. Referencias
+
+- [Advisory oficial PHP](https://www.php.net/archive/2026.php#2026-10-21-5)
+- [GHSA-w8hw-w9fx-j79w](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w)
+- [GHSA-6wmf-4rv5-p3rp](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp)
+- [CISA Alert + KEV](https://www.cisa.gov/news-events/alerts/2026/10/21/critical-vulnerabilities-php-require-immediate-patching)
+
+
+---
+
