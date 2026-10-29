@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Patitas Felices v1 - file upload RCE (Stealth Edition con Auto-eliminación)"""
 from __future__ import annotations
 import argparse, sys, random, string, requests
 
