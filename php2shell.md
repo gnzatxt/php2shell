@@ -64,7 +64,9 @@ Paralelamente utilizamos un script en python para explotar dicha vulnerabilidad.
 Para finalizar podemos observar como obtenemos acceso mediante una consola interactiva.
 <img width="862" height="160" alt="consola" src="https://github.com/user-attachments/assets/e335b076-a1d2-41bf-aeeb-10afb6f513d4" />
 
-[!NOTE] 
+> [!NOTE]
+> Gracias a cómo está estructurada la función execute_command (que sube el archivo, lo ejecuta y vuelve a subir en cada interacción), podemos lograr que el script se auto-elimine al agregar unlink(__FILE__); dentro del código PHP, el archivo se borra automáticamente del servidor en el mismo instante en que responde a la petición, sin dejar rastros en el directorio /uploads/.
+
 
 
 ---
