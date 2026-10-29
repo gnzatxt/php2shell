@@ -51,8 +51,20 @@ Dos vulnerabilidades críticas de seguridad de memoria (Use-After-Free y corrupc
 Para aprovecharnos de éste CVE, se procedió a explotarlo de manera controlada en un sitio aislado preparado unicamente con fines demostrativos.
 <img width="1458" height="660" alt="imagen1pagweb" src="https://github.com/user-attachments/assets/13f78858-fe54-43bf-b0e4-7926f6cfbeff" />
 
+Desde la terminal y utilizando la herramienta **netcat** procedemos a ponernos en escucha por el puerto 4444
+
+<img width="856" height="148" alt="netcat" src="https://github.com/user-attachments/assets/4dabb023-afba-4b79-b03b-26ebd0edaf9f" />
 
 
+Paralelamente utilizamos un script en python para explotar dicha vulnerabilidad. Este script es un exploit especializado de tipo Client-Side/Server Interaction. Su propósito es automatizar la explotación de vulnerabilidad de Subida de Archivos Insegura (Unrestricted File Upload) combinada con la vulnerabilidad de Ejecución Remota de Código (RCE).
+
+<img width="929" height="154" alt="python3" src="https://github.com/user-attachments/assets/8c4a4a7d-d6d9-41a1-8ade-7efe0cfca79d" />
+<img width="928" height="180" alt="exploit python" src="https://github.com/user-attachments/assets/6ee0c5b5-8e92-485f-a972-146106a13b49" />
+
+Para finalizar podemos observar como obtenemos acceso mediante una consola interactiva.
+<img width="862" height="160" alt="consola" src="https://github.com/user-attachments/assets/e335b076-a1d2-41bf-aeeb-10afb6f513d4" />
+
+[!NOTE] 
 
 
 ---
