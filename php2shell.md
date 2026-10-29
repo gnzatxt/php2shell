@@ -46,15 +46,14 @@ Dos vulnerabilidades críticas de seguridad de memoria (Use-After-Free y corrupc
 
 ---
 
-## 4. Evidencia / PoC
+## 4. Proof of Concept (PoC)
 
-- [x] Capturas de pantalla / demos de investigadores
-- [x] Request / Response (curl, Burp…)
-- [x] Logs del servidor
-- [x] Vídeo de la explotación
-- [x] PoCs públicos y templates Nuclei
+Para aprovecharnos de éste CVE, se procedió a explotarlo de manera controlada en un sitio aislado preparado unicamente con fines demostrativos.
+<img width="1458" height="660" alt="imagen1pagweb" src="https://github.com/user-attachments/assets/13f78858-fe54-43bf-b0e4-7926f6cfbeff" />
 
-Explotación confirmada en honeypots (incluyendo intento detectado por Amazon el **17 de octubre**, 4 días antes de la divulgación pública).
+
+
+
 
 ---
 
